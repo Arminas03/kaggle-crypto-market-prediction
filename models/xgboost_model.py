@@ -13,6 +13,7 @@ class XGBoostModel:
             "subsample": 0.8,
             "colsample_bytree": 0.8,
             "eval_metric": "mae",
+            "random_state": 0,
         }
         if params:
             self.params.update(params)
@@ -20,7 +21,7 @@ class XGBoostModel:
         self.setup_model()
 
     def setup_model(self):
-        self.model = xgboost.XGBRegressor(**self.params, random_state=0)
+        self.model = xgboost.XGBRegressor(**self.params)
 
     def train(self, data):
         print("training...")

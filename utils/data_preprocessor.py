@@ -28,10 +28,10 @@ class DataPreprocessor:
 
         all_idx = np.arange(len(y))
         trainval_idx, test_idx = sklearn.model_selection.train_test_split(
-            all_idx, test_size=0.8, random_state=0
+            all_idx, train_size=0.8, random_state=0
         )
         train_idx, val_idx = sklearn.model_selection.train_test_split(
-            trainval_idx, test_size=0.8, random_state=0
+            trainval_idx, train_size=0.8, random_state=0
         )
         if split_val:
             splits = {
