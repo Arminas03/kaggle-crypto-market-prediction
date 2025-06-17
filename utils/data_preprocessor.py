@@ -11,13 +11,23 @@ class DataPreprocessor:
         self.path_to_data_file = path_to_data_file
         self.y_std = None
 
+    def _corr_one_columns(self):
+        # fmt: off
+        return [
+            'X387', 'X429', 'X381', 'X423', 'X417', 'X333', 'X369', 'X327', 'X321', 'X405', 'X399',
+            'X315', 'X309', 'X393', 'X140', 'X182', 'X134', 'X176', 'X170', 'X86', 'X122', 'X80',
+            'X116', 'X74', 'X68', 'X110', 'X62', 'X146'
+        ]
+        # fmt: on
+
+    def _fixed_columns(self, data):
+        return [col for col in data.columns if data[col].nunique() == 1]
+
     def _get_data_from_file(self):
         data = pd.read_parquet(self.path_to_data_file)
 
-        data.drop(
-            columns=[col for col in data.columns if data[col].nunique() == 1],
-            inplace=True,
-        )
+        data.drop(columns=self._fixed_columns(data), inplace=True)
+        data.drop(columns=self._corr_one_columns(), inplace=True)
 
         return data
 

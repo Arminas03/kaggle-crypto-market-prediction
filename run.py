@@ -1,21 +1,16 @@
-from models.xgboost_model import XGBoostModel
+from models.xgboost_model import XGBoost
 from utils.data_preprocessor import DataPreprocessor
+from models.mlp_model import MLP
 
 
 def main():
-    model = XGBoostModel()
-
-    data_preprocessor = DataPreprocessor(path_to_data_file="data/train_reduced.parquet")
-    data = data_preprocessor.get_preprocessed_data()
-    y_rescale_factor = data_preprocessor.get_y_std()
-
-    model.train_val(data, y_rescale_factor)
-
-    data = data_preprocessor.get_preprocessed_data(split_val=False)
-    y_rescale_factor = data_preprocessor.get_y_std()
-
-    model.train(data)
-    model.test(data, y_rescale_factor)
+    # XGBoost.run_xgboost("data/train_reduced.parquet")
+    MLP.run_mlp("data/train_reduced.parquet")
+    # data = DataPreprocessor().get_preprocessed_data(
+    #     split_val=True, return_as_tensor=True, device_to_save_tensor=None
+    # )
+    # print(data["train"]["y"])
+    # print(data["train"]["X"])
 
 
 if __name__ == "__main__":
