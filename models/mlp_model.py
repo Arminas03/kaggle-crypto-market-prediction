@@ -3,7 +3,6 @@ from torch import nn
 from torch.utils.data import TensorDataset, DataLoader
 import torch.nn.functional
 import delu
-from tqdm.std import tqdm
 import sklearn.metrics
 
 from utils.data_preprocessor import DataPreprocessor
@@ -85,7 +84,7 @@ class MLP(nn.Module):
         return test_loss
 
     @staticmethod
-    def run_mlp(path_to_data_file, n_epochs=1000, patience=20, device=None):
+    def run(path_to_data_file, n_epochs=1000, patience=20, device=None):
         data_preprocessor = DataPreprocessor(path_to_data_file=path_to_data_file)
         data = data_preprocessor.get_preprocessed_data(
             split_val=True, return_as_tensor=True, device_to_save_tensor=None

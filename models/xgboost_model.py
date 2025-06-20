@@ -2,7 +2,6 @@ import xgboost
 import delu
 from sklearn.metrics import mean_squared_error
 from scipy.stats import pearsonr
-import json
 
 from utils.data_preprocessor import DataPreprocessor
 
@@ -19,9 +18,7 @@ class XGBoost:
             "reg_lambda": 0.1,
             "min_child_weight": 1,
             "gamma": 0,
-            "early_stopping_rounds": 50,
             "objective": "reg:squarederror",
-            "eval_metric": "mae",
             "random_state": 0,
         }
         if params:
@@ -71,7 +68,7 @@ class XGBoost:
         return dict(sorted(importance.items(), key=lambda item: item[1]))
 
     @staticmethod
-    def run_xgboost(path_to_data_file):
+    def run(path_to_data_file):
         model = XGBoost()
 
         data_preprocessor = DataPreprocessor(path_to_data_file=path_to_data_file)
@@ -85,6 +82,3 @@ class XGBoost:
 
         model.train_model(data)
         model.test(data, y_rescale_factor)
-
-        with open("importances.json", "w") as f:
-            json.dump(model.get_feature_importances(), f)
