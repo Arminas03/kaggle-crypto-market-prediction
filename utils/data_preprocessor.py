@@ -80,6 +80,10 @@ class DataPreprocessor:
         data = self._get_data_splits(
             return_type="np" if return_as_tensor else "pd", split_val=split_val
         )
+        if not return_as_tensor:
+            col_names_X = data["train"]["X"].columns.tolist()
+            col_name_y = data["train"]["y"].columns.tolist()
+            index_map = {split: data[split]["X"].index for split in data}
 
         X_preprocessing = self._preprocess_X(data)
         for split in data:
@@ -101,6 +105,15 @@ class DataPreprocessor:
 
             for split in data:
                 data[split]["y"] = data[split]["y"].float()
+
+        if not return_as_tensor:
+            for split in data:
+                data[split]["X"] = pd.DataFrame(
+                    data[split]["X"], columns=col_names_X, index=index_map[split]
+                )
+                data[split]["y"] = pd.DataFrame(
+                    data[split]["y"], columns=col_name_y, index=index_map[split]
+                )
 
         print("preprocessing finished")
         print("-" * 40)
