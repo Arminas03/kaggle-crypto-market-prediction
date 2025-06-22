@@ -1,6 +1,6 @@
 import xgboost
 import delu
-from sklearn.metrics import mean_squared_error
+import sklearn.metrics
 from scipy.stats import pearsonr
 
 from utils.data_preprocessor import DataPreprocessor
@@ -29,36 +29,45 @@ class XGBoost:
     def setup_model(self):
         self.model = xgboost.XGBRegressor(**self.params)
 
-    def train_model(self, data):
-        print("training...")
+    def train_model(self, data, no_print=False):
+        if not no_print:
+            print("training...")
         timer = delu.tools.Timer()
         timer.run()
 
         self.model.fit(data["train"]["X"], data["train"]["y"])
+        if not no_print:
+            print(f"train time: {timer}")
 
-        print(f"train time: {timer}")
-
-    def train_val(self, data, y_scale_factor=1):
-        self.train_model(data)
+    def train_val(self, data, y_scale_factor=1, no_print=False):
+        self.train_model(data, no_print)
 
         y_pred_val = self.model.predict(data["val"]["X"])
-        val_loss = mean_squared_error(y_pred_val, data["val"]["y"]) * y_scale_factor
+        val_loss = (
+            sklearn.metrics.mean_squared_error(y_pred_val, data["val"]["y"])
+            * y_scale_factor
+        )
         corr = pearsonr(y_pred_val.ravel(), data["val"]["y"].values.ravel()).statistic
 
-        print(f"val loss: {val_loss:.4f}")
-        print(f"Pearson corr: {corr}")
-        print("-" * 40)
+        if not no_print:
+            print(f"val loss: {val_loss:.4f}")
+            print(f"Pearson corr: {corr}")
+            print("-" * 40)
 
         return val_loss
 
-    def test(self, data, y_scale_factor=1):
+    def test(self, data, y_scale_factor=1, no_print=False):
         y_pred = self.model.predict(data["test"]["X"])
-        test_loss = mean_squared_error(y_pred, data["test"]["y"]) * y_scale_factor
+        test_loss = (
+            sklearn.metrics.mean_squared_error(y_pred, data["test"]["y"])
+            * y_scale_factor
+        )
         corr = pearsonr(y_pred.ravel(), data["test"]["y"].values.ravel()).statistic
 
-        print(f"test loss: {test_loss:.4f}")
-        print(f"Pearson corr: {corr}")
-        print("-" * 40)
+        if not no_print:
+            print(f"test loss: {test_loss:.4f}")
+            print(f"Pearson corr: {corr}")
+            print("-" * 40)
 
         return test_loss
 
