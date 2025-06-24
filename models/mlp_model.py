@@ -16,11 +16,11 @@ class MLP(nn.Module):
     def __init__(self, input_dim, hyperparams=None, device=None):
         super().__init__()
         self.hyperparams = {
-            "learning_rate": 0.003,
-            "n_layers": 2,
-            "layer_neurons": 64,
-            "batch_size": 256,
-            "n_epochs": 50,
+            "learning_rate": 0.0003,
+            "n_layers": 3,
+            "layer_neurons": 2,
+            "batch_size": 128,
+            "n_epochs": 20,
         }
         if hyperparams:
             self.hyperparams.update(hyperparams)
