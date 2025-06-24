@@ -1,13 +1,17 @@
 from utils.data_preprocessor import DataPreprocessor
 from models.xgboost_model import XGBoost
+from models.lightgbm_model import LightGBM
 from models.mlp_model import MLP
-from models.linear_regression_model import HuberRegression
+from models.huber_regression_model import HuberRegression
+from utils.bayesian_optimization import BayesianOptimization
 
 
 def main():
     # XGBoost.run("data/train_reduced_5.parquet")
-    MLP.run("data/train_reduced_5.parquet")
-    # HuberRegression.run("data/train_reduced_5.parquet")
+    # MLP.run("data/train_reduced_5.parquet")
+    HuberRegression.run("data/train_reduced_5.parquet")
+    # LightGBM.run("data/train_reduced_5.parquet")
+    # BayesianOptimization().run_lightgbm_tuning()
     # data = DataPreprocessor().get_preprocessed_data(
     #     split_val=True, return_as_tensor=True, device_to_save_tensor=None
     # )

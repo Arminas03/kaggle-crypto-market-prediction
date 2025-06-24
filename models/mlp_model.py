@@ -84,7 +84,7 @@ class MLP(nn.Module):
             #     break
 
     @torch.no_grad
-    def _evaluate(self, data, split, plot=False):
+    def _evaluate(self, data, split):
         self.eval()
 
         dataloader = self._get_dataloader(data, split, 256)
@@ -96,14 +96,13 @@ class MLP(nn.Module):
         )
         y_true = data[split]["y"].cpu().numpy()
 
-        if plot:
-            plt.plot(y_true, label="True values", color="blue")
-            plt.plot(y_pred, label="Predicted values", color="orange")
-            plt.xlabel("Sample index")
-            plt.ylabel("Target value")
-            plt.title("True vs Predicted values (Line Plot)")
-            plt.legend()
-            plt.show()
+        # plt.plot(y_true, label="True values", color="blue")
+        # plt.plot(y_pred, label="Predicted values", color="orange")
+        # plt.xlabel("Sample index")
+        # plt.ylabel("Target value")
+        # plt.title("True vs Predicted values (Line Plot)")
+        # plt.legend()
+        # plt.show()
 
         return sklearn.metrics.mean_squared_error(y_true, y_pred)
 
@@ -113,7 +112,7 @@ class MLP(nn.Module):
         return self._evaluate(data, "val")
 
     def test(self, data, y_scale_factor=1):
-        test_loss = self._evaluate(data, "test", True)
+        test_loss = self._evaluate(data, "test")
 
         print("-" * 40)
         print(f"test loss: {test_loss * y_scale_factor:.4f}")
