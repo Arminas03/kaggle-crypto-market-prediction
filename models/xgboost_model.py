@@ -9,15 +9,15 @@ from utils.data_preprocessor import DataPreprocessor
 class XGBoost:
     def __init__(self, params=None):
         self.params = {
-            "n_estimators": 1000,
-            "max_depth": 5,
-            "learning_rate": 0.05,
+            "n_estimators": 940,
+            "max_depth": 12,
+            "learning_rate": 0.0145,
             "subsample": 0.8,
             "colsample_bytree": 0.8,
-            "reg_alpha": 0.1,
-            "reg_lambda": 0.1,
-            "min_child_weight": 1,
-            "gamma": 0,
+            "reg_alpha": 0.23,
+            "reg_lambda": 0.08,
+            "min_child_weight": 7,
+            "gamma": 0.001,
             "objective": "reg:squarederror",
             "random_state": 0,
         }

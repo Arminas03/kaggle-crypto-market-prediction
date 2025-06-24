@@ -4,8 +4,8 @@ from models.mlp_model import MLP
 
 
 def main():
-    XGBoost.run_xgboost("data/train.parquet")
-    # MLP.run_mlp("data/train_reduced_5.parquet")
+    # XGBoost.run("data/train_reduced_5.parquet")
+    MLP.run("data/train_reduced_5.parquet")
     # data = DataPreprocessor().get_preprocessed_data(
     #     split_val=True, return_as_tensor=True, device_to_save_tensor=None
     # )
