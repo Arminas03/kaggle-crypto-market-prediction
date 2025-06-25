@@ -1,7 +1,6 @@
 import torch
 from torch import nn
 from torch.utils.data import TensorDataset, DataLoader
-import torch.nn.functional
 import delu
 import sklearn.metrics
 import matplotlib.pyplot as plt
