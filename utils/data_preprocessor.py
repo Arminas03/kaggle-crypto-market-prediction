@@ -2,6 +2,7 @@ import pandas as pd
 import sklearn
 import sklearn.model_selection
 import sklearn.preprocessing
+from sklearn.feature_selection import SelectKBest, mutual_info_regression, f_regression
 import numpy as np
 import torch
 from scipy.spatial.distance import squareform
@@ -158,4 +159,19 @@ class DataPreprocessor:
                     data[split]["X"][keep_cols],
                 ],
                 axis=1,
+            )
+
+    def select_k_best(self, data, linear, k=200):
+        selector = SelectKBest(
+            score_func=f_regression if linear else mutual_info_regression, k=k
+        )
+        selector.fit(data["train"]["X"], data["train"]["y"].squeeze())
+
+        cols = data["train"]["X"].columns[selector.get_support()]
+
+        for split in data:
+            data[split]["X"] = pd.DataFrame(
+                selector.transform(data[split]["X"]),
+                columns=cols,
+                index=data[split]["X"].index,
             )

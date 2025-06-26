@@ -25,15 +25,15 @@ class AE_MLP(nn.Module):
     def _set_hyperparams(self, hyperparams):
         self.hyperparams = {
             "general": {
-                "latent_dim": 6,
+                "latent_dim": 200,
                 "batch_size": 128,
-                "n_epochs": 20,
-                "learning_rate": 1e-4,
-                "loss_weight_ae": 0.2,
+                "n_epochs": 1000,
+                "learning_rate": 1e-3,
+                "loss_weight_ae": 0.1,
             },
-            "encoder": {"n_layers": 2, "layer_neurons": 4},
-            "decoder": {"n_layers": 2, "layer_neurons": 4},
-            "mlp": {"n_layers": 2, "layer_neurons": 4},
+            "encoder": {"n_layers": 3, "layer_neurons": 256},
+            "decoder": {"n_layers": 3, "layer_neurons": 256},
+            "mlp": {"n_layers": 3, "layer_neurons": 64},
         }
 
         if hyperparams:
@@ -156,6 +156,10 @@ class AE_MLP(nn.Module):
 
         print("-" * 40)
         print(f"test loss: {test_loss * y_scale_factor:.4f}")
+
+        train_loss = self._evaluate(data, "train", True)
+        print("-" * 40)
+        print(f"train loss: {train_loss * y_scale_factor:.4f}")
 
         return test_loss
 

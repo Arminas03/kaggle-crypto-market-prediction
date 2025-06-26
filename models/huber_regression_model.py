@@ -23,8 +23,11 @@ class HuberRegression:
     def fit_model(self, data):
         self.model.fit(data["train"]["X"], data["train"]["y"].squeeze())
 
+    def get_y_pred(self, data, split):
+        return self.model.predict(data[split]["X"])
+
     def test(self, data, split="test", y_scale_factor=1, no_print=False):
-        y_pred = self.model.predict(data[split]["X"])
+        y_pred = self.get_y_pred(data, split)
 
         test_loss = (
             sklearn.metrics.mean_squared_error(y_pred, data[split]["y"])
@@ -51,7 +54,7 @@ class HuberRegression:
 
         data_preprocessor = DataPreprocessor(path_to_data_file=path_to_data_file)
         data = data_preprocessor.get_preprocessed_data(split_val=False)
-        y_rescale_factor = data_preprocessor.get_y_std()
+        y_rescale_factor = data_preprocessor.get_y_std() ** 2
 
         model.fit_model(data)
         model.test(data, "test", y_rescale_factor)

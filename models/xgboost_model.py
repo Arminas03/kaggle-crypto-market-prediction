@@ -42,7 +42,7 @@ class XGBoost:
     def train_val(self, data, y_scale_factor=1, no_print=False):
         self.train_model(data, no_print)
 
-        y_pred_val = self.model.predict(data["val"]["X"])
+        y_pred_val = self.get_y_pred(data, "val")
         val_loss = (
             sklearn.metrics.mean_squared_error(y_pred_val, data["val"]["y"])
             * y_scale_factor
@@ -56,8 +56,11 @@ class XGBoost:
 
         return val_loss
 
+    def get_y_pred(self, data, split):
+        return self.model.predict(data[split]["X"])
+
     def test(self, data, y_scale_factor=1, no_print=False):
-        y_pred = self.model.predict(data["test"]["X"])
+        y_pred = self.get_y_pred(data, "test")
         test_loss = (
             sklearn.metrics.mean_squared_error(y_pred, data["test"]["y"])
             * y_scale_factor
@@ -82,12 +85,12 @@ class XGBoost:
 
         data_preprocessor = DataPreprocessor(path_to_data_file=path_to_data_file)
         data = data_preprocessor.get_preprocessed_data()
-        y_rescale_factor = data_preprocessor.get_y_std()
+        y_rescale_factor = data_preprocessor.get_y_std() ** 2
 
         model.train_val(data, y_rescale_factor)
 
         data = data_preprocessor.get_preprocessed_data(split_val=False)
-        y_rescale_factor = data_preprocessor.get_y_std()
+        y_rescale_factor = data_preprocessor.get_y_std() ** 2
 
         model.train_model(data)
         model.test(data, y_rescale_factor)
