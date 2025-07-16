@@ -10,31 +10,56 @@ from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
 import matplotlib.pyplot as plt
 from collections import defaultdict
 
+from del_col import *
+from important_cols import *
+
 
 class DataPreprocessor:
     def __init__(self, path_to_data_file="data/train_reduced_5.parquet"):
         self.path_to_data_file = path_to_data_file
-        self.y_std = None
+        self.y_std = 1
 
-    def _corr_one_columns(self):
-        # fmt: off
-        return [
-            'X387', 'X429', 'X381', 'X423', 'X417', 'X333', 'X369', 'X327', 'X321', 'X405', 'X399',
-            'X315', 'X309', 'X393', 'X140', 'X182', 'X134', 'X176', 'X170', 'X86', 'X122', 'X80',
-            'X116', 'X74', 'X68', 'X110', 'X62', 'X146'
-        ]
-        # fmt: on
+    def select_400_best_cols(self, data: pd.DataFrame):
+        cols = (
+            ["bid_qty", "ask_qty", "buy_qty", "sell_qty", "volume"]
+            + select_400_best
+            + ["label"]
+        )
+        return data[cols]
 
-    def _fixed_columns(self, data):
-        return [col for col in data.columns if data[col].nunique() == 1]
+    def add_features(self, data: pd.DataFrame):
+        data["bid_ask_spread"] = data["ask_qty"] - data["bid_qty"]
+        data["depth"] = data["bid_qty"] + data["ask_qty"]
+        data["order_flow"] = data["buy_qty"] - data["sell_qty"]
 
-    def _get_data_from_file(self):
-        data = pd.read_parquet(self.path_to_data_file)
+        data["bid_cross_ask"] = data["bid_qty"] * data["ask_qty"]
+        data["buy_cross_sell"] = data["buy_qty"] * data["sell_qty"]
+        data["bid_cross_buy"] = data["bid_qty"] * data["buy_qty"]
+        data["bid_cross_sell"] = data["bid_qty"] * data["sell_qty"]
+        data["ask_cross_buy"] = data["ask_qty"] * data["buy_qty"]
+        data["ask_cross_sell"] = data["ask_qty"] * data["sell_qty"]
 
-        data.drop(columns=self._fixed_columns(data), inplace=True)
-        data.drop(columns=self._corr_one_columns(), inplace=True)
+        data["buy_pressure"] = data["buy_qty"] / (data["volume"] + 1e-10)
+        data["sell_pressure"] = data["sell_qty"] / (data["volume"] + 1e-10)
+        data["buy_sell_ratio"] = data["buy_qty"] / (data["sell_qty"] + 1e-10)
+        data["vol_depth_ratio"] = data["volume"] / (data["depth"] + 1e-10)
+        data["buy_sell_imbalance"] = data["order_flow"] / (data["volume"] + 1e-10)
+        data["cross_vol_depth"] = data["bid_cross_buy"] / (
+            data["ask_cross_sell"] + 1e-10
+        )
+
+        data["liquidity_ratio"] = data["depth"] / (data["volume"] + 1e-10)
+        data["market_activity_ratio"] = data["volume"] / (data["depth"] + 1e-10)
+        data["order_imbalance"] = -data["bid_ask_spread"] / (data["depth"] + 1e-10)
+        data["kyle_lambda"] = np.abs(data["order_flow"]) / (data["volume"] + 1e-10)
+
+    def del_99_cols(self, data: pd.DataFrame):
+        data.drop(columns=high_corr_col_99, inplace=True)
 
         return data
+
+    def _get_data_from_file(self):
+        return pd.read_parquet(self.path_to_data_file)
 
     def _get_data_splits(self, split_val):
         data = self._get_data_from_file()
@@ -80,29 +105,30 @@ class DataPreprocessor:
                 data[split]["y"].to_numpy().astype(np.float32), device=device
             )
 
-    def get_preprocessed_data(self, split_val=True):
+    def get_preprocessed_data(self, split_val=True, standardize=True):
         data = self._get_data_splits(split_val=split_val)
 
         col_names_X = data["train"]["X"].columns.tolist()
         col_name_y = data["train"]["y"].columns.tolist()
         index_map = {split: data[split]["X"].index for split in data}
 
-        X_preprocessing = self._preprocess_X(data)
-        for split in data:
-            data[split]["X"] = X_preprocessing.transform(data[split]["X"])
+        if standardize:
+            X_preprocessing = self._preprocess_X(data)
+            for split in data:
+                data[split]["X"] = X_preprocessing.transform(data[split]["X"])
 
-        y_preprocessing = self._preprocess_y(data)
-        for split in data:
-            data[split]["y"] = y_preprocessing.transform(data[split]["y"])
-        self.y_std = y_preprocessing.scale_[0]
+            y_preprocessing = self._preprocess_y(data)
+            for split in data:
+                data[split]["y"] = y_preprocessing.transform(data[split]["y"])
+            self.y_std = y_preprocessing.scale_[0]
 
-        for split in data:
-            data[split]["X"] = pd.DataFrame(
-                data[split]["X"], columns=col_names_X, index=index_map[split]
-            )
-            data[split]["y"] = pd.DataFrame(
-                data[split]["y"], columns=col_name_y, index=index_map[split]
-            )
+            for split in data:
+                data[split]["X"] = pd.DataFrame(
+                    data[split]["X"], columns=col_names_X, index=index_map[split]
+                )
+                data[split]["y"] = pd.DataFrame(
+                    data[split]["y"], columns=col_name_y, index=index_map[split]
+                )
 
         print("preprocessing finished")
         print("-" * 40)

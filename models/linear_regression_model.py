@@ -1,27 +1,34 @@
 from sklearn.linear_model import HuberRegressor
+from sklearn.linear_model import LinearRegression
 import sklearn.metrics
 import matplotlib.pyplot as plt
+import delu
 
 
 from utils.data_preprocessor import DataPreprocessor
 
 
-class HuberRegression:
+class LR:
     def __init__(self, hyperparams=None):
         self.hyperparams = {
-            "epsilon": 1.8,
-            "max_iter": 3000,
-            "alpha": 0.056,
             "fit_intercept": True,
         }
 
         if hyperparams:
             self.hyperparams.update(hyperparams)
 
-        self.model = HuberRegressor(**self.hyperparams)
+        self.model = LinearRegression(**self.hyperparams)
 
-    def fit_model(self, data):
+    def fit_model(self, data, no_print=False):
+        if not no_print:
+            print("fitting...")
+        timer = delu.tools.Timer()
+        timer.run()
+
         self.model.fit(data["train"]["X"], data["train"]["y"].squeeze())
+
+        if not no_print:
+            print(f"fitting time: {timer}")
 
     def get_y_pred(self, data, split):
         return self.model.predict(data[split]["X"])
@@ -50,7 +57,7 @@ class HuberRegression:
 
     @staticmethod
     def run(path_to_data_file):
-        model = HuberRegression()
+        model = LinearRegression()
 
         data_preprocessor = DataPreprocessor(path_to_data_file=path_to_data_file)
         data = data_preprocessor.get_preprocessed_data(split_val=False)

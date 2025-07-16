@@ -1,5 +1,8 @@
 __pycache__/
 venv/
 data/
+prev_runs/
 
 *.json
+del_col.py
+*.csv

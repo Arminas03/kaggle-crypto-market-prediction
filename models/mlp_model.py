@@ -16,10 +16,14 @@ class MLP(nn.Module):
         super().__init__()
         self.hyperparams = {
             "learning_rate": 0.0003,
-            "n_layers": 3,
-            "layer_neurons": 2,
+            "weight_decay": 0.005,
+            "n_layers": 7,
+            "layer_neurons": 1024,
+            "dropout_rate": 0.3,
             "batch_size": 128,
             "n_epochs": 20,
+            "noise": True,
+            "noise_std": 0.1,
         }
         if hyperparams:
             self.hyperparams.update(hyperparams)
@@ -28,7 +32,9 @@ class MLP(nn.Module):
         self.device = device
 
         self.optimizer = torch.optim.AdamW(
-            self.parameters(), lr=self.hyperparams["learning_rate"]
+            self.parameters(),
+            lr=self.hyperparams["learning_rate"],
+            weight_decay=self.hyperparams["weight_decay"],
         )
         self.loss_fn = torch.nn.functional.mse_loss
 
@@ -37,6 +43,8 @@ class MLP(nn.Module):
 
         for _ in range(self.hyperparams["n_layers"]):
             layers.append(nn.Linear(input_dim, self.hyperparams["layer_neurons"]))
+            layers.append(nn.BatchNorm1d(self.hyperparams["layer_neurons"]))
+            layers.append(nn.Dropout(p=self.hyperparams["dropout_rate"]))
             layers.append(nn.LeakyReLU())
             input_dim = self.hyperparams["layer_neurons"]
 
@@ -57,24 +65,37 @@ class MLP(nn.Module):
     def train_model(self, data):
         self.train()
 
+        train_loss = 0
+        n_samples = 0
         train_dataloader = self._get_dataloader(
             data, "train", self.hyperparams["batch_size"]
         )
 
         for X_batch, y_batch in train_dataloader:
+            if self.hyperparams["noise"]:
+                X_batch += torch.randn_like(X_batch) * self.hyperparams["noise_std"]
             self.optimizer.zero_grad()
             loss = self.loss_fn(self(X_batch), y_batch)
             loss.backward()
             self.optimizer.step()
+
+            train_loss += loss.item() * X_batch.size(0)
+            n_samples += X_batch.size(0)
+
+        return train_loss / n_samples
 
     def run_learning(self, data, y_rescale_factor=1, validate=True, no_print=False):
         # early_stopping = delu.tools.EarlyStopping(20, mode="min")
 
         for epoch in range(1, self.hyperparams["n_epochs"] + 1):
             if validate:
-                val_loss = self.train_val(data)
+                train_loss, val_loss = self.train_val(data)
                 if not no_print:
-                    print(f"epoch: {epoch}, val_loss = {val_loss*y_rescale_factor:.4f}")
+                    print(
+                        f"epoch: {epoch}, "
+                        + f"train_loss = {train_loss*y_rescale_factor:.4f}, "
+                        + f"val_loss = {val_loss*y_rescale_factor:.4f}"
+                    )
             if not validate:
                 self.train_model(data)
 
@@ -82,17 +103,20 @@ class MLP(nn.Module):
             # if early_stopping.should_stop():
             #     break
 
-    @torch.no_grad
-    def _evaluate(self, data, split):
-        self.eval()
-
+    def get_y_pred(self, data, split):
         dataloader = self._get_dataloader(data, split, 256)
 
-        y_pred = (
+        return (
             torch.cat([self(X_batch).squeeze(-1) for X_batch, _ in dataloader])
             .cpu()
             .numpy()
         )
+
+    @torch.no_grad
+    def _evaluate(self, data, split):
+        self.eval()
+
+        y_pred = self.get_y_pred(data, split)
         y_true = data[split]["y"].cpu().numpy()
 
         # plt.plot(y_true, label="True values", color="blue")
@@ -106,9 +130,9 @@ class MLP(nn.Module):
         return sklearn.metrics.mean_squared_error(y_true, y_pred)
 
     def train_val(self, data):
-        self.train_model(data)
+        train_loss = self.train_model(data)
 
-        return self._evaluate(data, "val")
+        return train_loss, self._evaluate(data, "val")
 
     def test(self, data, y_scale_factor=1):
         test_loss = self._evaluate(data, "test")
@@ -122,9 +146,8 @@ class MLP(nn.Module):
     def run(path_to_data_file, device=None):
         data_preprocessor = DataPreprocessor(path_to_data_file=path_to_data_file)
         data = data_preprocessor.get_preprocessed_data(split_val=True)
-        data_preprocessor.ha_cluster_data(data, 6)
         data_preprocessor.transform_data_to_tensor(data, device)
-        y_rescale_factor = data_preprocessor.get_y_std()
+        y_rescale_factor = data_preprocessor.get_y_std() ** 2
 
         model = MLP(data["train"]["X"].shape[1]).to(device)
 

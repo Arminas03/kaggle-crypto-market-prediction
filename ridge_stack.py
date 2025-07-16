@@ -5,13 +5,13 @@ import numpy as np
 from utils.data_preprocessor import DataPreprocessor
 from models.xgboost_model import XGBoost
 from models.lightgbm_model import LightGBM
-from models.huber_regression_model import HuberRegression
+from models.linear_regression_model import LR
 
 
-def get_model_preds(data_preprocessor: DataPreprocessor, split, data, data_k_best):
+def get_model_preds(split, data, data_k_best):
     model_xgb = XGBoost()
     model_lgbm = LightGBM()
-    model_huber = HuberRegression()
+    model_huber = LR()
 
     model_xgb.train_model(data, no_print=True)
     model_lgbm.train_model(data_k_best, no_print=True)
@@ -32,9 +32,7 @@ def get_ridge_ensemble_coefs():
     data_preprocessor.select_k_best(data_k_best, False, 400)
 
     y_true = data_preprocessor.get_preprocessed_data()["val"]["y"]
-    y_pred_xgb, y_pred_lgbm, y_pred_huber = get_model_preds(
-        data_preprocessor, "val", data, data_k_best
-    )
+    y_pred_xgb, y_pred_lgbm, y_pred_huber = get_model_preds("val", data, data_k_best)
     y_pred_stack = np.column_stack([y_pred_xgb, y_pred_lgbm, y_pred_huber])
 
     ridge = Ridge(fit_intercept=False, alpha=1)
@@ -54,9 +52,7 @@ def test_ridge_stack(coefs, data_preprocessor: DataPreprocessor):
     data_preprocessor.select_k_best(data_k_best, False, 400)
     y_scale_factor = data_preprocessor.get_y_std() ** 2
 
-    y_pred_xgb, y_pred_lgbm, y_pred_huber = get_model_preds(
-        data_preprocessor, "test", data, data_k_best
-    )
+    y_pred_xgb, y_pred_lgbm, y_pred_huber = get_model_preds("test", data, data_k_best)
 
     y_pred = coefs[0] * y_pred_xgb + coefs[1] * y_pred_lgbm + coefs[2] * y_pred_huber
 
@@ -66,4 +62,7 @@ def test_ridge_stack(coefs, data_preprocessor: DataPreprocessor):
 
 
 if __name__ == "__main__":
-    test_ridge_stack([0.6, 0.3, 0.1], DataPreprocessor())
+    test_ridge_stack(
+        [0.6, 0.3, 0.1],
+        DataPreprocessor(),
+    )

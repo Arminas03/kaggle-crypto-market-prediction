@@ -2,7 +2,7 @@ import optuna
 
 from models.xgboost_model import XGBoost
 from models.mlp_model import MLP
-from models.huber_regression_model import HuberRegression
+from models.linear_regression_model import LR
 from models.lightgbm_model import LightGBM
 from utils.data_preprocessor import DataPreprocessor
 
@@ -94,7 +94,7 @@ class BayesianOptimization:
 
     def _tune_huber(self, trial: optuna.trial.Trial, data, y_rescale_factor):
         params = self._suggest_huber_params(trial)
-        model = HuberRegression(params)
+        model = LR(params)
 
         model.fit_model(data)
         y_val_loss = model.test(data, "val", y_rescale_factor, True)
