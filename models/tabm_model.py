@@ -74,7 +74,7 @@ class ModelTabM:
             }
         )
 
-    def train_model(self, data, no_print=False):
+    def run_learning(self, data, no_print=False):
         if not no_print:
             print("training...")
         timer = delu.tools.Timer()

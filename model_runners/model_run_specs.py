@@ -1,132 +1,14 @@
 import pandas as pd
 import numpy as np
-import sklearn.model_selection
 from sklearn.linear_model import Ridge
 
 from models.lightgbm_model import LightGBM
 from models.xgboost_model import XGBoost
 from models.linear_regression_model import LR
 from models.tabm_model import ModelTabM
+from models.mlp_model import MLP
 from utils.data_preprocessing import *
-from important_cols import *
-
-OVERFIT_PARAMS_LGBM = {
-    "n_estimators": 1500,
-    "max_depth": 12,
-    "learning_rate": 0.01,
-    "subsample": 0.9,
-    "colsample_bytree": 0.9,
-    "reg_alpha": 0.01,
-    "reg_lambda": 0.01,
-    "min_child_samples": 100,
-    "objective": "regression",
-    "random_state": 0,
-    "verbosity": -1,
-}
-
-UNDERFIT_PARAMS_LGBM = {
-    "n_estimators": 200,
-    "max_depth": 3,
-    "learning_rate": 0.05,
-    "subsample": 0.5,
-    "colsample_bytree": 0.5,
-    "reg_alpha": 2,
-    "reg_lambda": 2,
-    "min_child_samples": 20,
-    "objective": "regression",
-    "random_state": 5,
-    "verbosity": -1,
-}
-
-BALANCED_PARAMS_LGBM = {
-    "n_estimators": 500,
-    "max_depth": 7,
-    "learning_rate": 0.02,
-    "subsample": 0.7,
-    "colsample_bytree": 0.7,
-    "reg_alpha": 0.1,
-    "reg_lambda": 0.1,
-    "min_child_samples": 50,
-    "objective": "regression",
-    "random_state": 15,
-    "verbosity": -1,
-}
-
-OVERFIT_PARAMS_XGB = {
-    "n_estimators": 800,
-    "max_depth": 10,
-    "learning_rate": 0.01,
-    "subsample": 0.85,
-    "colsample_bytree": 0.85,
-    "reg_alpha": 0.001,
-    "reg_lambda": 0.001,
-    "min_child_weight": 5,
-    "gamma": 0.001,
-    "objective": "reg:squarederror",
-    "random_state": 81,
-}
-
-UNDERFIT_PARAMS_XGB = {
-    "n_estimators": 200,
-    "max_depth": 3,
-    "learning_rate": 0.1,
-    "subsample": 0.5,
-    "colsample_bytree": 0.5,
-    "reg_alpha": 2,
-    "reg_lambda": 2,
-    "min_child_weight": 10,
-    "gamma": 0.001,
-    "objective": "reg:squarederror",
-    "random_state": 27,
-}
-
-BALANCED_PARAMS_XGB = {
-    "n_estimators": 500,
-    "max_depth": 7,
-    "learning_rate": 0.05,
-    "subsample": 0.6,
-    "colsample_bytree": 0.6,
-    "reg_alpha": 0.01,
-    "reg_lambda": 0.01,
-    "min_child_weight": 7,
-    "gamma": 0.001,
-    "objective": "reg:squarederror",
-    "random_state": 9,
-}
-
-
-def preprocess(data: pd.DataFrame):
-    add_engineered_features(data)
-    data = select_features(data, good_cols_manual)
-
-    return data
-
-
-def data_setup(path_build, path_submit, split_val):
-    data = get_data(path_build)
-    data = preprocess(data)
-
-    submit_data = get_data(path_submit)
-    submit_data = preprocess(submit_data)
-
-    X, y = data.drop(columns="label"), data[["label"]]
-
-    if not split_val:
-        return {
-            "train": {"X": X, "y": y},
-            "submit": {"X": submit_data.drop(columns="label")},
-        }
-
-    all_idx = np.arange(len(y))
-    train_idx, val_idx = sklearn.model_selection.train_test_split(
-        all_idx, train_size=0.8, random_state=4
-    )
-
-    return {
-        "train": {"X": X.iloc[train_idx], "y": y.iloc[train_idx]},
-        "val": {"X": X.iloc[val_idx], "y": y.iloc[val_idx]},
-        "submit": {"X": submit_data.drop(columns="label")},
-    }
+from constants import *
 
 
 def xgb_oub_spec(data):
@@ -254,7 +136,7 @@ def lr_xgb_lgbm_ensemble_spec(data):
     y_pred_xgb = xgb_oub_spec(data)
     y_pred_lr = lr_base_spec(data)
 
-    y_pred = 0.5 * y_pred_lgbm + 0.2 * y_pred_xgb + 0.3 * y_pred_lr
+    y_pred = 0.4 * y_pred_lgbm + 0.2 * y_pred_xgb + 0.4 * y_pred_lr
 
     print("=" * 60)
     print("Ensemble complete")
@@ -291,12 +173,24 @@ def data_setup_tabm(path_build, path_submit, split_val):
     return convert_data_to_tensor(data_to_return)
 
 
+def mlp_base_spec(data):
+    print("Starting MLP base spec")
+    print("-" * 60)
+
+    model = MLP(n_features=data["train"]["X"].shape[1])
+    model.run_learning(data)
+
+    print("-" * 60)
+    print("Finished MLP base spec")
+    return model.get_y_pred(data, "submit")
+
+
 def tabm_base_spec(data):
     print("Starting TabM base spec")
     print("-" * 60)
 
     model = ModelTabM(n_features=data["train"]["X"].shape[1], embedding=True)
-    model.train_model(data)
+    model.run_learning(data)
 
     print("-" * 60)
     print("Finished TabM base spec")
@@ -335,12 +229,12 @@ def diff_sample_training(model_spec):
         "full": data_setup("data/train.parquet", "data/test.parquet", False),
     }
     weight_per_sample = {
-        "40": 0.33,
-        "70": 0.33,
-        "full": 0.34,
+        "40": 0.45,
+        "70": 0.45,
+        "full": 0.1,
     }
 
-    y_pred = np.zeros(len(data_for_sample["full"]["submit"]["X"]))
+    y_pred = np.zeros(len(data_for_sample["40"]["submit"]["X"]))
     for sample_name, data in data_for_sample.items():
         print(f"Sample: {sample_name}")
         print("=" * 60)

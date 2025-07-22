@@ -3,32 +3,29 @@ from torch import nn
 from torch.utils.data import TensorDataset, DataLoader
 import delu
 import sklearn.metrics
-import matplotlib.pyplot as plt
-
-from utils.data_preprocessor import DataPreprocessor
 
 
 delu.random.seed(0)
 
 
 class MLP(nn.Module):
-    def __init__(self, input_dim, hyperparams=None, device=None):
+    def __init__(self, n_features, hyperparams=None, device=None):
         super().__init__()
         self.hyperparams = {
-            "learning_rate": 0.0003,
-            "weight_decay": 0.005,
-            "n_layers": 7,
-            "layer_neurons": 1024,
-            "dropout_rate": 0.3,
-            "batch_size": 128,
-            "n_epochs": 20,
+            "learning_rate": 0.003,
+            "weight_decay": 0.05,
+            "n_layers": 3,
+            "layer_neurons": 256,
+            "dropout_rate": 0.5,
+            "batch_size": 1024,
+            "n_epochs": 50,
             "noise": True,
             "noise_std": 0.1,
         }
         if hyperparams:
             self.hyperparams.update(hyperparams)
 
-        self.model = self._setup_mlp(input_dim)
+        self.model = self._setup_mlp(n_features)
         self.device = device
 
         self.optimizer = torch.optim.AdamW(
@@ -56,10 +53,18 @@ class MLP(nn.Module):
         return self.model(x)
 
     def _get_dataloader(self, data, split, batch_size):
-        return DataLoader(
-            TensorDataset(data[split]["X"], data[split]["y"]),
-            batch_size=batch_size,
-            shuffle=True,
+        return (
+            DataLoader(
+                TensorDataset(data[split]["X"], data[split]["y"]),
+                batch_size=batch_size,
+                shuffle=True,
+            )
+            if split != "submit"
+            else DataLoader(
+                TensorDataset(data[split]["X"], data[split]["X"]),
+                batch_size=batch_size,
+                shuffle=True,
+            )
         )
 
     def train_model(self, data):
@@ -84,8 +89,11 @@ class MLP(nn.Module):
 
         return train_loss / n_samples
 
-    def run_learning(self, data, y_rescale_factor=1, validate=True, no_print=False):
-        # early_stopping = delu.tools.EarlyStopping(20, mode="min")
+    def run_learning(self, data, y_rescale_factor=1, validate=False, no_print=False):
+        if not no_print:
+            print("training...")
+        timer = delu.tools.Timer()
+        timer.run()
 
         for epoch in range(1, self.hyperparams["n_epochs"] + 1):
             if validate:
@@ -97,12 +105,17 @@ class MLP(nn.Module):
                         + f"val_loss = {val_loss*y_rescale_factor:.4f}"
                     )
             if not validate:
-                self.train_model(data)
+                train_loss = self.train_model(data)
+                if not no_print and not epoch % 10:
+                    print(
+                        f"epoch: {epoch}, "
+                        + f"train_loss = {train_loss*y_rescale_factor:.4f}, "
+                    )
 
-            # early_stopping.update(val_loss)
-            # if early_stopping.should_stop():
-            #     break
+        if not no_print:
+            print(f"train time: {timer}")
 
+    @torch.no_grad
     def get_y_pred(self, data, split):
         dataloader = self._get_dataloader(data, split, 256)
 
@@ -119,14 +132,6 @@ class MLP(nn.Module):
         y_pred = self.get_y_pred(data, split)
         y_true = data[split]["y"].cpu().numpy()
 
-        # plt.plot(y_true, label="True values", color="blue")
-        # plt.plot(y_pred, label="Predicted values", color="orange")
-        # plt.xlabel("Sample index")
-        # plt.ylabel("Target value")
-        # plt.title("True vs Predicted values (Line Plot)")
-        # plt.legend()
-        # plt.show()
-
         return sklearn.metrics.mean_squared_error(y_true, y_pred)
 
     def train_val(self, data):
@@ -141,15 +146,3 @@ class MLP(nn.Module):
         print(f"test loss: {test_loss * y_scale_factor:.4f}")
 
         return test_loss
-
-    @staticmethod
-    def run(path_to_data_file, device=None):
-        data_preprocessor = DataPreprocessor(path_to_data_file=path_to_data_file)
-        data = data_preprocessor.get_preprocessed_data(split_val=True)
-        data_preprocessor.transform_data_to_tensor(data, device)
-        y_rescale_factor = data_preprocessor.get_y_std() ** 2
-
-        model = MLP(data["train"]["X"].shape[1]).to(device)
-
-        model.run_learning(data, y_rescale_factor)
-        model.test(data, y_rescale_factor)
