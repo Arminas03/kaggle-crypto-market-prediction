@@ -13,7 +13,7 @@ Model | Variants Used | Weight
 -|-|-
 XGBoost | Underfit + Balanced + Overfit | 20%
 LightGBM | Underfit + Balanced + Overfit | 40%
-Ridge | Linear regression | 40%
+Ridge | Standard | 40%
 
 
 Each model is trained on three data subsets to capture different temporal patterns:
